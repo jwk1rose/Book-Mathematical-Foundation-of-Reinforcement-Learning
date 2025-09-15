@@ -37,27 +37,19 @@
 \lstset{style=mystyle}
 
 \title{Reinforcement Learning Policy Analysis in a Grid World}
-\author{Ji Wenkang}
-\date{\today}
+\author{Wenkang Ji}
 
+\date{\today}
 \begin{document}
 
 \maketitle
 
-\section{Software and Environment}
+\section{Software}
 
-The simulation and analysis were conducted using **Python 3**. Key scientific computing libraries utilized include:
+The simulation and analysis were conducted using Python 3. Key scientific computing libraries utilized include:
 \begin{itemize}
     \item \textbf{NumPy:} For efficient array operations and numerical calculations.
     \item \textbf{Matplotlib:} For plotting the grid world, policies, and agent trajectories.
-\end{itemize}
-
-The environment is a custom-built **Grid World**, which is a discrete 5x3 grid ($5$ columns, $3$ rows). The agent's objective is to navigate from a starting state to a target state while avoiding forbidden zones. The specific configuration is as follows:
-\begin{itemize}
-    \item \textbf{Grid Size:} (Width, Height) = (5, 3)
-    \item \textbf{Starting State:} (0, 2)
-    \item \textbf{Target State:} (2, 2)
-    \item \textbf{Forbidden States:} [(2, 1), (1, 2), (3, 1)]
 \end{itemize}
 
 \section{Reward Setting and Discount Rate}
@@ -70,14 +62,14 @@ The agent receives feedback from the environment in the form of rewards. The rew
     \item \textbf{Step Reward:} A neutral reward of $R_{\text{step}} = 0.0$ is given for any other valid move.
 \end{itemize}
 
-The **discount rate**, $\gamma$, is set to **0.9**. This value determines the present value of future rewards, encouraging the agent to reach the target sooner rather than later. The discounted return is calculated as $G_t = \sum_{k=0}^{T-1} \gamma^k R_{t+k+1}$.
+The \textbf{discount rate}, $\gamma$, is set to \textbf{0.9}.
 
 \section{Policy 1: Deterministic Policy}
 
 \subsection{Policy Description}
 This policy is designed to be optimal. It is generated using a Breadth-First Search (BFS) algorithm that works backward from the target state to find the shortest path from every other valid state. For any given state, the policy deterministically selects the action that moves the agent one step along this shortest path. For terminal or unreachable states, the policy is to stay.
 
-The policy is represented in the table below, where each cell indicates the probability of taking an action from a given state. A value of 1.00 signifies a deterministic choice.
+The policy is represented in the table below, where each cell indicates the probability of taking an action from a given state. A value of $1.00$ signifies a deterministic choice.
 
 \begin{table}[h!]
 \centering
@@ -103,12 +95,13 @@ The policy is represented in the table below, where each cell indicates the prob
 \end{table}
 
 \subsection{Policy Plot and Trajectory}
-Starting from state \textbf{(0, 2)}, the agent's trajectory over 50 steps is simulated. The policy is visualized with green arrows on the grid, and the agent's path is shown as a green line.
+Starting from state \textbf{(0, 2)}, the agent's trajectory over 50 steps is simulated. The policy is visualized with green arrows on the grid, and the agent's path is shown as a green line, as depicted in \textbf{Figure~\ref{fig:deterministic}}.
 
 \begin{figure}[h!]
 \centering
 \includegraphics[width=0.7\textwidth]{deterministic_policy_trajectory.png}
 \caption{Visualization of the deterministic policy (arrows) and the resulting trajectory (line) from start state (0, 2).}
+\label{fig:deterministic}
 \end{figure}
 
 % Use a breakable environment for long lines
@@ -153,12 +146,13 @@ This policy is stochastic and non-optimal. For any non-terminal state, it follow
 \end{table}
 
 \subsection{Policy Plot and Trajectory}
-Again starting from state \textbf{(0, 2)}, the agent's trajectory is simulated. The policy is visualized with arrows whose thickness can represent probability, though here they show the possible actions.
+Again starting from state \textbf{(0, 2)}, the agent's trajectory is simulated. The policy and resulting trajectory are shown in \textbf{Figure~\ref{fig:stochastic}}.
 
 \begin{figure}[h!]
 \centering
 \includegraphics[width=0.7\textwidth]{stochastic_policy_trajectory.png}
 \caption{Visualization of the stochastic policy and the resulting trajectory from start state (0, 2).}
+\label{fig:stochastic}
 \end{figure}
 
 The first 10 states of the trajectory are:
@@ -171,16 +165,53 @@ The first 10 states of the trajectory are:
 The calculated discounted return for this 50-step trajectory is:
 $$ G = -8.771119968050847 $$
 
+\section{Observations and Discussion}
+
+The results from the two policies show a stark contrast in performance, highlighting the difference between an informed, optimal policy and a naive, random one.
+
+\begin{itemize}
+    \item \textbf{The Deterministic Policy} performed exceptionally well. It successfully navigated the agent from the start state (0, 2) to the target state (2, 2) by following the shortest possible path while avoiding all forbidden zones. The positive discounted return of \textbf{3.82} reflects this success; the agent reached the target and accumulated high rewards, discounted over time. This demonstrates the power of having a model of the environment (the grid layout) to compute an optimal plan.
+
+    \item \textbf{The Stochastic Policy} performed very poorly. The trajectory shows the agent never left the starting state (0, 2). This is because from state (0, 2), the actions with the highest probabilities are "right" (0.5) and "down" (0.3). The "right" action leads to state (1, 2), which is a forbidden zone, and the "down" action leads off the grid. In both cases, the environment rules dictate that the agent does not move and receives a reward of -1. Therefore, the agent had a high probability (0.5 + 0.3 = 0.8) of receiving a penalty and remaining in the same state at each step. This created a "trap," leading to a highly negative discounted return of \textbf{-8.77} as it accumulated penalties over 50 steps.
+\end{itemize}
+
+In conclusion, a policy that intelligently uses the structure of the environment (like the BFS-based deterministic policy) is far superior to a policy that acts randomly without regard to consequences. The stochastic policy's failure highlights how an agent with a poor policy can \textbf{become trapped} in parts of the state space that yield low or negative rewards.
+
+
+
+
+
 \newpage
+
 \section{Key Code Implementation}
+
+\subsection{Discounted Return Calculation}
+This function calculates the discounted return G based on the list of rewards collected during an episode and a given discount factor gamma, following the formula $G_t = \sum_{k=0}^{T-1} \gamma^k R_{t+k+1}$.
+
+\begin{lstlisting}[language=Python, caption={Code for calculating the discounted return.}]
+def calculate_discounted_return(rewards, gamma):
+    """
+    Calculates the discounted return for a list of rewards.
+
+    Args:
+        rewards (list): A list of rewards from the trajectory.
+        gamma (float): The discount factor.
+
+    Returns:
+        float: The calculated discounted return G.
+    """
+    G = 0.0
+    for t, r in enumerate(rewards):
+        G += (gamma ** t) * r
+    return G
+\end{lstlisting}
+
 The core logic for generating the two policies is encapsulated in the following functions.
 
 \subsection{Deterministic Policy Generation}
 This function uses BFS to find the shortest path from all states to the target, then builds a policy matrix that follows this path.
 
 \begin{lstlisting}[language=Python, caption={Code for building the deterministic policy.}]
-from collections import deque
-
 def build_deterministic_policy(env):
     """
     Deterministic policy using a maze-solving method:
@@ -269,17 +300,5 @@ def build_stochastic_policy(env):
             policy[s, :] = probs
     return policy
 \end{lstlisting}
-
-\section{Observations and Discussion}
-
-The results from the two policies show a stark contrast in performance, highlighting the difference between an informed, optimal policy and a naive, random one.
-
-\begin{itemize}
-    \item \textbf{The Deterministic Policy} performed exceptionally well. It successfully navigated the agent from the start state (0, 2) to the target state (2, 2) by following the shortest possible path while avoiding all forbidden zones. The positive discounted return of \textbf{3.82} reflects this success; the agent reached the target and accumulated high rewards, discounted over time. This demonstrates the power of having a model of the environment (the grid layout) to compute an optimal plan.
-
-    \item \textbf{The Stochastic Policy} performed very poorly. The trajectory shows the agent never left the starting state (0, 2). This is because from state (0, 2), the actions with the highest probabilities are "right" (0.5) and "down" (0.3). The "right" action leads to state (1, 2), which is a forbidden zone, and the "down" action leads off the grid. In both cases, the environment rules dictate that the agent does not move and receives a reward of -1. Therefore, the agent had a high probability (0.5 + 0.3 = 0.8) of receiving a penalty and remaining in the same state at each step. This created a "trap," leading to a highly negative discounted return of \textbf{-8.77} as it accumulated penalties over 50 steps.
-\end{itemize}
-
-In conclusion, a policy that intelligently uses the structure of the environment (like the BFS-based deterministic policy) is far superior to a policy that acts randomly without regard to consequences. The stochastic policy's failure illustrates a common challenge in reinforcement learning: an agent with a poor policy can easily get stuck in parts of the state space that yield low or negative rewards.
 
 \end{document}
