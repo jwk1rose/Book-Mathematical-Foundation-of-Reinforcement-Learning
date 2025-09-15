@@ -15,10 +15,15 @@ class GridWorld():
                  forbidden_states=args.forbidden_states):
 
         self.env_size = env_size
-        self.num_states = env_size[0] * env_size[1]
+        self.valid_states = [(x, y) for x in range(env_size[0]) for y in range(env_size[1]) if
+                             (x, y) not in forbidden_states]
+        self.num_states = len(self.valid_states)
         self.start_state = start_state
         self.target_state = target_state
         self.forbidden_states = forbidden_states
+
+        self.state_to_idx = {s: i for i, s in enumerate(self.valid_states)}
+        self.idx_to_state = {i: s for i, s in enumerate(self.valid_states)}
 
         self.agent_state = start_state
         self.action_space = args.action_space          
@@ -133,28 +138,63 @@ class GridWorld():
         plt.draw()
         plt.pause(animation_interval)
         if args.debug:
-            input('press Enter to continue...')     
+            input('press Enter to continue...')
 
+    def add_policy(self, policy_matrix):
+        for state, state_action_group in enumerate(policy_matrix):
+            st = self.idx_to_state[state]
+            x, y = st
 
- 
-    def add_policy(self, policy_matrix):                  
-        for state, state_action_group in enumerate(policy_matrix):    
-            x = state % self.env_size[0]
-            y = state // self.env_size[0]
+            # 跳过 forbidden 区域
+            if st in self.forbidden_states:
+                continue
+
             for i, action_probability in enumerate(state_action_group):
-                if action_probability !=0:
+                if action_probability != 0:
                     dx, dy = self.action_space[i]
-                    if (dx, dy) != (0,0):
-                        self.ax.add_patch(patches.FancyArrow(x, y, dx=(0.1+action_probability/2)*dx, dy=(0.1+action_probability/2)*dy, color=self.color_policy, width=0.001, head_width=0.05))
+                    if (dx, dy) != (0, 0):
+                        self.ax.add_patch(
+                            patches.FancyArrow(
+                                x, y,
+                                dx=(0.1 + action_probability / 2) * dx,
+                                dy=(0.1 + action_probability / 2) * dy,
+                                color=self.color_policy,
+                                width=0.001,
+                                head_width=0.05
+                            )
+                        )
                     else:
-                        self.ax.add_patch(patches.Circle((x, y), radius=0.07, facecolor=self.color_policy, edgecolor=self.color_policy, linewidth=1, fill=False))
-    
+                        self.ax.add_patch(
+                            patches.Circle(
+                                (x, y),
+                                radius=0.07,
+                                facecolor=self.color_policy,
+                                edgecolor=self.color_policy,
+                                linewidth=1,
+                                fill=False
+                            )
+                        )
+
     def add_state_values(self, values, precision=1):
         '''
             values: iterable
         '''
         values = np.round(values, precision)
         for i, value in enumerate(values):
-            x = i % self.env_size[0]
-            y = i // self.env_size[0]
+            x, y = self.idx_to_state[i]
             self.ax.text(x, y, str(value), ha='center', va='center', fontsize=10, color='black')
+
+    def add_state_numbers(self):
+        """
+        在网格上显示每个合法 state 的编号
+        编号来源于 self.state_to_idx
+        """
+        for i, state in enumerate(self.valid_states):
+            x, y = state
+            self.ax.text(
+                x, y,
+                str(i),  # 显示编号
+                ha='center', va='center',
+                fontsize=8,
+                color='red'
+            )
